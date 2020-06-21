@@ -118,14 +118,24 @@ export type actionType<Data, Error> = {
 }
 
 export interface CacheInterface {
+  size(): number
   get(key: keyInterface): any
   set(key: keyInterface, value: any, shouldNotify?: boolean): any
   keys(): string[]
   has(key: keyInterface): boolean
   delete(key: keyInterface, shouldNotify?: boolean): void
   clear(shouldNotify?: boolean): void
+  purge(): void
   serializeKey(key: keyInterface): [string, any, string]
-  subscribe(listener: cacheListener): () => void
+  subscribe(listener: cacheListener, key: keyInterface): () => void
+  toJSON(): { [key: string]: any }
+  activate(key: keyInterface): void
+  deactivate(key: keyInterface): void
+  isActive(Key: keyInterface): void
 }
 
-export type cacheListener = () => void
+export type eventType = 'set' | 'delete' | 'clear' | 'purge'
+
+export type subscriptionEvent = { type: eventType; key?: string }
+
+export type cacheListener = (event: subscriptionEvent) => void

@@ -529,6 +529,14 @@ function useSWR<Data = any, Error = any>(
     }
   }, [key, revalidate])
 
+  // This effect is used to keep track of the active keys
+  // The listener does nothing, but is recreated on each useEffect call
+  // So it's always a new function and don't get deduped by Set
+  useEffect(() => {
+    if (!key) return undefined
+    return cache.subscribe(() => {}, key)
+  }, [key])
+
   // set up polling
   useIsomorphicLayoutEffect(() => {
     let timer = null

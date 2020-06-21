@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, useRef } from 'react'
+import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react'
 
 import { cache } from './config'
 import {
@@ -209,6 +209,18 @@ export function useSWRPages<OffsetType = any, Data = any, Error = any>(
     }
     return p
   }, [_pageFn, pageCount, pageSWRs, pageOffsets, pageKey])
+
+  // This effect is used to keep track of the active keys
+  // The listener does nothing, but is recreated on each useEffect call
+  // So it's always a new function and don't get deduped by Set
+  useEffect(() => {
+    const unsubscribeCount = cache.subscribe(() => {}, pageCountKey)
+    const unsubscribeOffset = cache.subscribe(() => {}, pageOffsetKey)
+    return () => {
+      unsubscribeCount()
+      unsubscribeOffset()
+    }
+  }, [pageCountKey, pageOffsetKey])
 
   return {
     pages,

@@ -1574,21 +1574,95 @@ describe('useSWR - cache', () => {
     `)
   })
 
-  it('should notify subscribers when a cache item changed', async () => {
+  it('should notify subscribed of specific key when a cache item changed', async () => {
     // create new cache instance to don't get affected by other tests
     // updating the normal cache instance
     const tmpCache = new Cache()
 
-    const listener = jest.fn()
-    const unsubscribe = tmpCache.subscribe(listener)
-    tmpCache.set('cache-2', 'random message')
+    const listener1 = jest.fn()
+    const listener2 = jest.fn()
+    const listener3 = jest.fn()
 
-    expect(listener).toHaveBeenCalled()
+    const unsubscribe1 = tmpCache.subscribe(listener1, 'key-1')
+    const unsubscribe2 = tmpCache.subscribe(listener2, 'key-2')
+    const unsubscribe3 = tmpCache.subscribe(listener3)
 
-    unsubscribe()
-    tmpCache.set('cache-2', 'a different message')
+    tmpCache.set('key-1', 'test-1', false)
 
-    expect(listener).toHaveBeenCalledTimes(1)
+    expect(listener1).toHaveBeenCalledWith({ key: 'key-1', type: 'set' })
+    expect(listener2).not.toHaveBeenCalled()
+    expect(listener3).toHaveBeenCalledWith({ key: 'key-1', type: 'set' })
+
+    tmpCache.delete('key-1', false)
+
+    expect(listener1).toHaveBeenCalledWith({ key: 'key-1', type: 'delete' })
+    expect(listener2).not.toHaveBeenCalled()
+    expect(listener3).toHaveBeenCalledWith({ key: 'key-1', type: 'delete' })
+
+    tmpCache.clear(false)
+
+    expect(listener1).toHaveBeenCalledWith({ type: 'clear', key: 'key-1' })
+    expect(listener2).toHaveBeenCalledWith({ type: 'clear', key: 'key-2' })
+    expect(listener3).toHaveBeenCalledWith({ type: 'clear' })
+
+    unsubscribe1()
+    unsubscribe2()
+    unsubscribe3()
+
+    tmpCache.set('key-1', 'test-2', false)
+
+    expect(listener1).toHaveBeenCalledTimes(3)
+    expect(listener2).toHaveBeenCalledTimes(1)
+    expect(listener3).toHaveBeenCalledTimes(3)
+  })
+
+  it('should allow serialization', () => {
+    // create new cache instance to don't get affected by other tests
+    // updating the normal cache instance
+    const tmpCache = new Cache()
+
+    tmpCache.set('key-1', 'test-1', false)
+    tmpCache.set('key-2', ['test-2'], false)
+    tmpCache.set('key-3', { value: 'test-3' }, false)
+
+    expect(JSON.stringify(tmpCache)).toBe(
+      '{"key-1":"test-1","key-2":["test-2"],"key-3":{"value":"test-3"}}'
+    )
+  })
+
+  it('should purge inactive keys', async () => {
+    cache.clear(false)
+    const numbers = Array.from({ length: 300 }, (_, i) => i + 1)
+    numbers.forEach(n => {
+      cache.set(`cache-key-${n}`, `value-${n}`, false)
+      cache.deactivate(`cache-key-${n}`)
+    })
+
+    expect(cache.size()).toBe(300)
+
+    function PageOne() {
+      const { data } = useSWR('cache-key-301', () => 'value-300')
+      if (!data) return null
+      return <div>{data}</div>
+    }
+
+    function PageTwo() {
+      const { data } = useSWR('cache-key-302', () => 'value-300')
+      if (!data) return null
+      return <div>{data}</div>
+    }
+
+    const { container, unmount } = render(<PageOne />)
+
+    await waitForDomChange({ container })
+    await waitForDomChange({ container: render(<PageTwo />).container })
+
+    // we should have 300 origina keys + 2 keys per page (data and error)
+    expect(cache.size()).toBe(304)
+
+    unmount() // we unmount the first page
+
+    expect(cache.size()).toBe(2)
   })
 })
 
