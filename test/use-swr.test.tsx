@@ -1574,21 +1574,60 @@ describe('useSWR - cache', () => {
     `)
   })
 
-  it('should notify subscribers when a cache item changed', async () => {
+  it('should notify subscribed of specific key when a cache item changed', async () => {
     // create new cache instance to don't get affected by other tests
     // updating the normal cache instance
     const tmpCache = new Cache()
 
-    const listener = jest.fn()
-    const unsubscribe = tmpCache.subscribe(listener)
-    tmpCache.set('cache-2', 'random message')
+    const listener1 = jest.fn()
+    const listener2 = jest.fn()
+    const listener3 = jest.fn()
 
-    expect(listener).toHaveBeenCalled()
+    const unsubscribe1 = tmpCache.subscribe(listener1, 'key-1')
+    const unsubscribe2 = tmpCache.subscribe(listener2, 'key-2')
+    const unsubscribe3 = tmpCache.subscribe(listener3)
 
-    unsubscribe()
-    tmpCache.set('cache-2', 'a different message')
+    tmpCache.set('key-1', 'test-1', false)
 
-    expect(listener).toHaveBeenCalledTimes(1)
+    expect(listener1).toHaveBeenCalledWith({ key: 'key-1', type: 'set' })
+    expect(listener2).not.toHaveBeenCalled()
+    expect(listener3).toHaveBeenCalledWith({ key: 'key-1', type: 'set' })
+
+    tmpCache.delete('key-1', false)
+
+    expect(listener1).toHaveBeenCalledWith({ key: 'key-1', type: 'delete' })
+    expect(listener2).not.toHaveBeenCalled()
+    expect(listener3).toHaveBeenCalledWith({ key: 'key-1', type: 'delete' })
+
+    tmpCache.clear(false)
+
+    expect(listener1).toHaveBeenCalledWith({ type: 'clear', key: 'key-1' })
+    expect(listener2).toHaveBeenCalledWith({ type: 'clear', key: 'key-2' })
+    expect(listener3).toHaveBeenCalledWith({ type: 'clear' })
+
+    unsubscribe1()
+    unsubscribe2()
+    unsubscribe3()
+
+    tmpCache.set('key-1', 'test-2', false)
+
+    expect(listener1).toHaveBeenCalledTimes(3)
+    expect(listener2).toHaveBeenCalledTimes(1)
+    expect(listener3).toHaveBeenCalledTimes(3)
+  })
+
+  it('should allow serialization', () => {
+    // create new cache instance to don't get affected by other tests
+    // updating the normal cache instance
+    const tmpCache = new Cache()
+
+    tmpCache.set('key-1', 'test-1', false)
+    tmpCache.set('key-2', ['test-2'], false)
+    tmpCache.set('key-3', { value: 'test-3' }, false)
+
+    expect(JSON.stringify(tmpCache)).toBe(
+      '{"key-1":"test-1","key-2":["test-2"],"key-3":{"value":"test-3"}}'
+    )
   })
 })
 

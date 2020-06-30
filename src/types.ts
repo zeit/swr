@@ -128,7 +128,12 @@ export interface CacheInterface {
   delete(key: keyInterface, shouldNotify?: boolean): void
   clear(shouldNotify?: boolean): void
   serializeKey(key: keyInterface): [string, any, string]
-  subscribe(listener: cacheListener): () => void
+  subscribe(listener: cacheListener, key: keyInterface): () => void
+  toJSON(): { [key: string]: any }
 }
 
-export type cacheListener = () => void
+export type eventType = 'set' | 'delete' | 'clear'
+
+export type subscriptionEvent = { type: eventType; key?: string }
+
+export type cacheListener = (event: subscriptionEvent) => void

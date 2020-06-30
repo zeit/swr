@@ -1,14 +1,19 @@
-import { CacheInterface, keyInterface, cacheListener } from './types'
+import { CacheInterface, keyInterface, cacheListener, eventType } from './types'
 import { mutate } from './use-swr'
 import hash from './libs/hash'
 
+// This wildcard key exists to allow subscribers to don't specify a key
+// The symbol is not exposed to avoid people to use it, it's for internal
+// usage only
+const WILDCARD_KEY = Symbol()
+
 export default class Cache implements CacheInterface {
   private __cache: Map<string, any>
-  private __listeners: cacheListener[]
+  private __listeners: Map<string | typeof WILDCARD_KEY, Set<cacheListener>>
 
-  constructor(initialData: any = {}) {
-    this.__cache = new Map(Object.entries(initialData))
-    this.__listeners = []
+  constructor() {
+    this.__cache = new Map()
+    this.__listeners = new Map([[WILDCARD_KEY, new Set<cacheListener>()]])
   }
 
   get(key: keyInterface): any {
@@ -20,7 +25,7 @@ export default class Cache implements CacheInterface {
     const [_key] = this.serializeKey(key)
     this.__cache.set(_key, value)
     if (shouldNotify) mutate(key, value, false)
-    this.notify()
+    this.notify('set', _key)
   }
 
   keys() {
@@ -35,14 +40,14 @@ export default class Cache implements CacheInterface {
   clear(shouldNotify = true) {
     if (shouldNotify) this.__cache.forEach(key => mutate(key, null, false))
     this.__cache.clear()
-    this.notify()
+    this.notify('clear')
   }
 
   delete(key: keyInterface, shouldNotify = true) {
     const [_key] = this.serializeKey(key)
     if (shouldNotify) mutate(key, null, false)
     this.__cache.delete(_key)
-    this.notify()
+    this.notify('delete', _key)
   }
 
   // TODO: introduce namespace for the cache
@@ -71,29 +76,51 @@ export default class Cache implements CacheInterface {
     return [key, args, errorKey]
   }
 
-  subscribe(listener: cacheListener) {
+  subscribe(listener: cacheListener, key?: keyInterface) {
     if (typeof listener !== 'function') {
       throw new Error('Expected the listener to be a function.')
     }
 
+    let _key: string | typeof WILDCARD_KEY = WILDCARD_KEY
+    if (key) {
+      _key = this.serializeKey(key)[0]
+    }
+
     let isSubscribed = true
-    this.__listeners.push(listener)
+    if (this.__listeners.has(_key)) {
+      this.__listeners.get(_key).add(listener)
+    } else {
+      this.__listeners.set(_key, new Set<cacheListener>([listener]))
+    }
 
     return () => {
       if (!isSubscribed) return
       isSubscribed = false
-      const index = this.__listeners.indexOf(listener)
-      if (index > -1) {
-        this.__listeners[index] = this.__listeners[this.__listeners.length - 1]
-        this.__listeners.length--
-      }
+      this.__listeners.get(_key).delete(listener)
     }
   }
 
+  toJSON() {
+    return Object.fromEntries(this.__cache.entries())
+  }
+
   // Notify Cache subscribers about a change in the cache
-  private notify() {
-    for (let listener of this.__listeners) {
-      listener()
+  private notify(type: eventType, key?: string) {
+    if (key) {
+      const event = { key, type }
+      // Call listeners subscribed to all keys
+      this.__listeners.get(WILDCARD_KEY).forEach(listener => listener(event))
+      if (this.__listeners.has(key)) {
+        // Call listeners subscribed to the updated key
+        this.__listeners.get(key).forEach(listener => listener(event))
+      }
+    } else {
+      const typeEvent = { type }
+      // Call all the listeners regardless of the key
+      this.__listeners.forEach((listeners, _key) => {
+        const event = typeof _key === 'symbol' ? typeEvent : { type, key: _key }
+        listeners.forEach(listener => listener(event))
+      })
     }
   }
 }
