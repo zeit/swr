@@ -66,6 +66,7 @@ const defaultConfig: ConfigInterface = {
   refreshWhenOffline: false,
   shouldRetryOnError: true,
   suspense: false,
+  passKeyToFetcher: true,
   compare: deepEqual
 }
 

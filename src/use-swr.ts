@@ -377,7 +377,10 @@ function useSWR<Data = any, Error = any>(
           }
 
           if (fnArgs !== null) {
-            CONCURRENT_PROMISES[key] = fn(...fnArgs)
+            const [, ...fnArgsWithoutKey] = fnArgs
+            CONCURRENT_PROMISES[key] = config.passKeyToFetcher
+              ? fn(...fnArgs)
+              : fn(...fnArgsWithoutKey)
           } else {
             CONCURRENT_PROMISES[key] = fn(key)
           }

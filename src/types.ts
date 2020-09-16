@@ -16,6 +16,7 @@ export interface ConfigInterface<
   revalidateOnMount?: boolean
   revalidateOnReconnect?: boolean
   shouldRetryOnError?: boolean
+  passKeyToFetcher?: boolean
   fetcher?: Fn
   suspense?: boolean
   initialData?: Data

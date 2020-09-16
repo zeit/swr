@@ -317,6 +317,26 @@ describe('useSWR', () => {
     expect(container.textContent).toMatchInlineSnapshot(`"args-3helloworld"`)
   })
 
+  it('should not pass the key to the fetcher when passKeyToFetcher is set to false', async () => {
+    const obj = { v: 'hello' }
+    const arr = ['world']
+
+    function Page() {
+      const { data } = useSWR(
+        () => ['args-without-key', obj, arr],
+        (a, b) => a.v + b[0],
+        { passKeyToFetcher: false }
+      )
+
+      return <div>{data}</div>
+    }
+
+    const { container } = render(<Page />)
+
+    await waitForDomChange({ container })
+    expect(container.textContent).toMatchInlineSnapshot(`"helloworld"`)
+  })
+
   it('should accept initial data', async () => {
     const fetcher = jest.fn(() => 'SWR')
 
