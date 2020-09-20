@@ -127,6 +127,7 @@ const { data, error, isValidating, mutate } = useSWR(key, fetcher, options)
 - `loadingTimeout = 3000`: timeout to trigger the onLoadingSlow event
 - `errorRetryInterval = 5000`: error retry interval [(details)](#error-retries)
 - `errorRetryCount`: max error retry count [(details)](#error-retries)
+- `subscribe(key, mutate): () => void`: effect handler to run a subscription for the key
 - `onLoadingSlow(key, config)`: callback function when a request takes too long to load (see `loadingTimeout`)
 - `onSuccess(data, key, config)`: callback function when a request finishes successfully
 - `onError(err, key, config)`: callback function when a request returns an error
@@ -155,6 +156,7 @@ You can also use a [global configuration](#global-configuration) to provide defa
 - [Suspense Mode](#suspense-mode)
 - [Error Retries](#error-retries)
 - [Prefetching Data](#prefetching-data)
+- [Subscriptions](#subscriptions)
 - [Request Deduplication](#request-deduplication)
 
 ### Global Configuration
@@ -516,6 +518,51 @@ function prefetch() {
 And use it when you need to preload the **resources** (for example when [hovering](https://github.com/GoogleChromeLabs/quicklink) [a](https://github.com/guess-js/guess) [link](https://instant.page)).
 Together with techniques like [page prefetching](https://nextjs.org/docs#prefetching-pages) in Next.js, you will be able to load both next page and data instantly.
 
+### Subscriptions
+
+You can run a subscription to get new data in real-time and update the cache passing a `subscribe` option to SWR. This function receives the `key` passed to SWR, and it receives the `mutate` function with the key already defined, as received from `useSWR`, this `mutate` function should be used to update the value when a new one comes from the stream of data the hook is subscribed to.
+
+The `subscribe` function must return a new function used to unsubscribe. This is similar to how effects work.
+
+```js
+import useSWR from 'swr'
+
+function fetcher() {
+  return new Promise((resolve, reject) => {
+    const onSuccess = ({ coords }) => {
+      resolve({
+        latitude: coords.latitude,
+        longitude: coords.longitude
+      })
+    }
+
+    navigator.geolocation.getCurrentPosition(onSuccess, reject)
+  })
+}
+
+function subscribe(_, mutate) {
+  const id = navigator.geolocation.watchPosition(position => {
+    const coords = {
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude
+    }
+
+    mutate(coords, false)
+  })
+  return () => navigator.geolocation.clearWatch(id)
+}
+
+function App() {
+  const { data: position } = useSWR('geolocation', fetcher, { subscribe })
+
+  if (!position) return null
+
+  return <Map latitude={position.latitude} longitude={position.longitude} />
+}
+```
+
+_Note the subscribe function must be stable between renders, use [useCallback](https://reactjs.org/docs/hooks-reference.html#usecallback) if you need to use props or state inside the subscribe function. Everytime the subscribe function change SWR will unsubscribe and subscribe again.
+
 ### Request Deduplication
 
 SWR deduplicates requests by default. If you call the hook with the same key multiple times, only one request is made. Duplicated calls will receive a value from cache.
@@ -557,6 +604,7 @@ const { data, error } = useSWR('/api/user', fetcher, { dedupingInterval: 1000 })
 ```
 
 This will deduplicate requests at an interval of 1 second.
+
 <br/>
 
 ## Authors

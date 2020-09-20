@@ -1,23 +1,17 @@
 {
-  "name": "axios-typescript",
+  "name": "subscription-storage",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
-    "axios": "^0.19.0",
     "next": "9.3.3",
-    "react": "^16.12.0",
-    "react-dom": "^16.12.0",
+    "react": "16.13.1",
+    "react-dom": "16.13.1",
     "swr": "latest"
   },
   "scripts": {
     "dev": "next",
     "start": "next start",
     "build": "next build"
-  },
-  "devDependencies": {
-    "@types/node": "^12.12.11",
-    "@types/react": "16.9.11",
-    "typescript": "3.6.4"
   }
 }

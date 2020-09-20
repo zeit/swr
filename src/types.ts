@@ -1,4 +1,9 @@
 export type fetcherFn<Data> = (...args: any) => Data | Promise<Data>
+export type subscribeFn<Data, Error> = (
+  key: keyInterface,
+  mutate: responseInterface<Data, Error>['mutate']
+) => () => void
+
 export interface ConfigInterface<
   Data = any,
   Error = any,
@@ -20,6 +25,7 @@ export interface ConfigInterface<
   suspense?: boolean
   initialData?: Data
 
+  subscribe?: subscribeFn<Data, Error>
   onLoadingSlow?: (key: string, config: ConfigInterface<Data, Error>) => void
   onSuccess?: (
     data: Data,

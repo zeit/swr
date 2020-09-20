@@ -46,6 +46,9 @@ const RECONNECT_REVALIDATORS = {}
 const CACHE_REVALIDATORS = {}
 const MUTATION_TS = {}
 const MUTATION_END_TS = {}
+const SUBSCRIBERS: {
+  [key: string]: { count: number; unsubscribe(): void }
+} = {}
 
 // setup DOM events listeners for `focus` and `reconnect` actions
 if (!IS_SERVER && window.addEventListener) {
@@ -649,6 +652,42 @@ function useSWR<Data = any, Error = any>(
     config.refreshWhenOffline,
     revalidate
   ])
+
+  // setup subscription
+  useIsomorphicLayoutEffect(() => {
+    // If we haven't received a subscribe function we will do nothing here
+    if (!config.subscribe) return undefined
+
+    // If it's the first time a key will subscribe we will define the key
+    if (!SUBSCRIBERS[key]) {
+      SUBSCRIBERS[key] = { count: 0, unsubscribe: () => {} }
+    }
+
+    // If at the moment we run this there are no other subscribers for this key
+    if (SUBSCRIBERS[key].count === 0) {
+      // we will increment it by one
+      SUBSCRIBERS[key].count += 1
+      // and create the subscription storing the unsubscribe key
+      SUBSCRIBERS[key].unsubscribe = config.subscribe(_key, boundMutate)
+    } else {
+      // if there were already a subscription running we will only increment
+      // the count
+      SUBSCRIBERS[key].count += 1
+    }
+
+    // when the component unmount
+    return () => {
+      // we will reduce the count by one
+      SUBSCRIBERS[key].count -= 1
+      // and if the count is now zero we will unsubscribe
+      if (SUBSCRIBERS[key].count === 0) {
+        SUBSCRIBERS[key].unsubscribe()
+      }
+    }
+    // we use key as dependency here but use _key internally to avoid this
+    // effect to clear and run again on every render if it's an array or
+    // function
+  }, [config.subscribe, key, boundMutate])
 
   // suspense
   if (config.suspense) {

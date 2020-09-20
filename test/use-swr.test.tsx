@@ -2112,6 +2112,261 @@ describe('useSWR - key', () => {
   })
 })
 
+describe('useSWR - subscription', () => {
+  it('should setup subscription if a subscribe function is passed', async () => {
+    const subscribe = jest.fn(() => () => {})
+
+    let value = 0
+    function Page() {
+      const { data } = useSWR('subscribe-1', () => value++, {
+        subscribe,
+        dedupingInterval: 0
+      })
+      return <div>data: {data}</div>
+    }
+
+    const { container } = render(<Page />)
+
+    // hydration
+    expect(container.firstChild.textContent).toMatchInlineSnapshot(`"data: "`)
+    await waitForDomChange({ container }) // mount
+    expect(container.firstChild.textContent).toMatchInlineSnapshot(`"data: 0"`)
+
+    expect(subscribe).toHaveBeenCalledTimes(1)
+  })
+
+  it('should resubscribe when key change', async () => {
+    const unsubscribe = jest.fn()
+    const subscribe = jest.fn(() => unsubscribe)
+
+    let value = 0
+    function Page({ swrKey = 'subscribe-2' } = {}) {
+      const { data } = useSWR(swrKey, () => value++, {
+        subscribe,
+        dedupingInterval: 0
+      })
+
+      return <div>data: {data}</div>
+    }
+
+    const { container, rerender } = render(<Page />)
+
+    // hydration
+    expect(container.firstChild.textContent).toMatchInlineSnapshot(`"data: "`)
+    await waitForDomChange({ container }) // mount
+    expect(container.firstChild.textContent).toMatchInlineSnapshot(`"data: 0"`)
+
+    rerender(<Page swrKey="subscribe-2-updated" />)
+
+    await waitForDomChange({ container }) // mount
+    expect(container.firstChild.textContent).toMatchInlineSnapshot(`"data: 1"`)
+
+    expect(subscribe).toHaveBeenCalledTimes(2)
+    expect(unsubscribe).toHaveBeenCalledTimes(1)
+  })
+
+  it('should receive the key and mutate in subscribe', async () => {
+    const subscribe = jest.fn(() => () => {})
+
+    let value = 0
+    function Page() {
+      const { data } = useSWR('subscribe-3', () => value++, {
+        subscribe,
+        dedupingInterval: 0
+      })
+      return <div>data: {data}</div>
+    }
+
+    const { container } = render(<Page />)
+
+    // hydration
+    expect(container.firstChild.textContent).toMatchInlineSnapshot(`"data: "`)
+    await waitForDomChange({ container }) // mount
+    expect(container.firstChild.textContent).toMatchInlineSnapshot(`"data: 0"`)
+
+    expect(subscribe).toHaveBeenCalledWith('subscribe-3', expect.any(Function))
+  })
+
+  it('should unsubscribe when component unmount', async () => {
+    const unsubscribe = jest.fn()
+    const subscribe = () => unsubscribe
+
+    let value = 0
+    function Page() {
+      const { data } = useSWR('subscribe-4', () => value++, {
+        subscribe,
+        dedupingInterval: 0
+      })
+
+      return <div>data: {data}</div>
+    }
+
+    const { container, unmount } = render(<Page />)
+
+    // hydration
+    expect(container.firstChild.textContent).toMatchInlineSnapshot(`"data: "`)
+    await waitForDomChange({ container }) // mount
+    expect(container.firstChild.textContent).toMatchInlineSnapshot(`"data: 0"`)
+
+    unmount()
+
+    expect(unsubscribe).toHaveBeenCalledTimes(1)
+  })
+
+  it('should unsubscribe when subscribe function changed', async () => {
+    const unsubscribe = jest.fn()
+    const subscribe1 = jest.fn(() => unsubscribe)
+    const subscribe2 = jest.fn(() => unsubscribe)
+
+    let value = 0
+    function Page({ subscribe = subscribe1 } = {}) {
+      const { data } = useSWR('subscribe-5', () => value++, {
+        subscribe,
+        dedupingInterval: 0
+      })
+
+      return <div>data: {data}</div>
+    }
+
+    const { container, rerender } = render(<Page />)
+
+    // hydration
+    expect(container.firstChild.textContent).toMatchInlineSnapshot(`"data: "`)
+    await waitForDomChange({ container }) // mount
+    expect(container.firstChild.textContent).toMatchInlineSnapshot(`"data: 0"`)
+
+    rerender(<Page subscribe={subscribe2} />)
+
+    expect(unsubscribe).toHaveBeenCalledTimes(1)
+    expect(subscribe1).toHaveBeenCalledTimes(1)
+    expect(subscribe2).toHaveBeenCalledTimes(1)
+  })
+
+  it('should be able to mutate cache from subscribe', async () => {
+    jest.useFakeTimers()
+    const subscribe = jest.fn((_, boundMutate) => {
+      const timer = setTimeout(
+        () => boundMutate(currentValue => currentValue + 1),
+        100
+      )
+      return () => clearTimeout(timer)
+    })
+
+    let value = 0
+    function Page() {
+      const { data } = useSWR('subscribe-6', () => value++, {
+        subscribe,
+        dedupingInterval: 0
+      })
+
+      return <div>data: {data}</div>
+    }
+
+    const { container } = render(<Page />)
+
+    // hydration
+    expect(container.firstChild.textContent).toMatchInlineSnapshot(`"data: "`)
+    await waitForDomChange({ container }) // mount
+    expect(container.firstChild.textContent).toMatchInlineSnapshot(`"data: 0"`)
+
+    jest.runAllTimers() // run the setTimeout in subscribe
+
+    await waitForDomChange({ container }) // mount
+    expect(container.firstChild.textContent).toMatchInlineSnapshot(`"data: 1"`)
+    expect(subscribe).toHaveBeenCalled()
+  })
+
+  it('should support global subscribe', async () => {
+    const subscribe = jest.fn(() => () => {})
+
+    let value = 0
+    function Page() {
+      const { data } = useSWR('subscribe-7', () => value++, {
+        dedupingInterval: 0
+      })
+      return <div>data: {data}</div>
+    }
+
+    const { container } = render(
+      <SWRConfig value={{ subscribe }}>
+        <Page />
+      </SWRConfig>
+    )
+
+    // hydration
+    expect(container.firstChild.textContent).toMatchInlineSnapshot(`"data: "`)
+    await waitForDomChange({ container }) // mount
+    expect(container.firstChild.textContent).toMatchInlineSnapshot(`"data: 0"`)
+
+    expect(subscribe).toHaveBeenCalledWith('subscribe-7', expect.any(Function))
+  })
+
+  it('should only subscribe one time per key', async () => {
+    const unsubscribe = jest.fn(() => {})
+    const subscribe = jest.fn(() => unsubscribe)
+
+    let value = 0
+    function Page() {
+      const { data } = useSWR('subscribe-8', () => value++, {
+        subscribe,
+        dedupingInterval: 0
+      })
+
+      return <div>data: {data}</div>
+    }
+
+    const { container, rerender, unmount } = render(
+      <>
+        <Page />
+        <Page />
+      </>
+    )
+
+    expect(container).toMatchInlineSnapshot(`
+      <div>
+        <div>
+          data: 
+        </div>
+        <div>
+          data: 
+        </div>
+      </div>
+    `)
+    await waitForDomChange({ container }) // mount
+    expect(container).toMatchInlineSnapshot(`
+      <div>
+        <div>
+          data: 
+          0
+        </div>
+        <div>
+          data: 
+          0
+        </div>
+      </div>
+    `)
+
+    expect(subscribe).toHaveBeenCalledTimes(1)
+
+    rerender(<Page />)
+
+    expect(container).toMatchInlineSnapshot(`
+      <div>
+        <div>
+          data: 
+          0
+        </div>
+      </div>
+    `)
+
+    expect(subscribe).toHaveBeenCalledTimes(1)
+
+    unmount()
+
+    expect(unsubscribe).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('useSWR - config callbacks', () => {
   it('should trigger the onSuccess event with the latest version of the onSuccess callback', async () => {
     let state = null
