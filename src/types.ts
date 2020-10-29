@@ -1,4 +1,6 @@
-export type fetcherFn<Data> = (...args: any) => Data | Promise<Data>
+export type fetcherFn<Data, TKey extends readonly any[] = any[]> = (
+  ...args: TKey
+) => Data | Promise<Data>
 export interface ConfigInterface<
   Data = any,
   Error = any,
@@ -49,9 +51,9 @@ export interface RevalidateOptionInterface {
   dedupe?: boolean
 }
 
-export type keyType = string | any[] | null
-type keyFunction = () => keyType
-export type keyInterface = keyFunction | keyType
+export type keyType<TKey = any> = string | TKey | null
+type keyFunction<TKey> = () => keyType<TKey>
+export type keyInterface<TKey = any> = keyFunction<TKey> | keyType<TKey>
 export type updaterInterface<Data = any, Error = any> = (
   shouldRevalidate?: boolean,
   data?: Data,

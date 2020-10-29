@@ -55,7 +55,7 @@
     "react": "16.11.0",
     "react-dom": "16.11.0",
     "ts-jest": "24.1.0",
-    "typescript": "3.6.4"
+    "typescript": "3.9.7"
   },
   "dependencies": {
     "dequal": "2.0.2"

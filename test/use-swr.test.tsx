@@ -304,7 +304,7 @@ describe('useSWR', () => {
 
     function Page() {
       const { data } = useSWR(
-        () => ['args-3', obj, arr],
+        () => ['args-3', obj, arr] as const,
         (a, b, c) => a + b.v + c[0]
       )
 
