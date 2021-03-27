@@ -194,6 +194,12 @@ async function mutate<Data = any>(
   return data
 }
 
+const clearDedupingInterval = (_key: keyInterface) => {
+  const [key] = cache.serializeKey(_key)
+  delete CONCURRENT_PROMISES[key]
+  delete CONCURRENT_PROMISES_TS[key]
+}
+
 function useSWR<Data = any, Error = any>(
   ...args:
     | readonly [Key]
@@ -817,5 +823,5 @@ const SWRConfig = SWRConfigContext.Provider as typeof SWRConfigContext.Provider 
   default: SWRConfiguration
 }
 
-export { trigger, mutate, SWRConfig }
+export { trigger, mutate, clearDedupingInterval, SWRConfig }
 export default useSWR
