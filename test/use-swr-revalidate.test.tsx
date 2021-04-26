@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
-import useSWR from '../src'
+import React, { useEffect, useState } from 'react'
+import useSWR, { mutate, trigger } from '../src'
 import { createResponse, sleep } from './utils'
 
 const waitForNextTick = () => act(() => sleep(1))
@@ -135,5 +135,106 @@ describe('useSWR - revalidate', () => {
     fireEvent.click(screen.getByText('count:'))
     await act(() => sleep(70))
     screen.getByText('count: 2')
+  })
+
+  it('should respect `shouldRevalidate` of `mutate` even though there is no mounted hook', async () => {
+    const swrKey =
+      'should respect `shouldRevalidate` of `mutate` even though there is no mounted hook'
+    function A() {
+      const { data } = useSWR(
+        swrKey,
+        async () => {
+          return 'A'
+        },
+        {
+          dedupingInterval: 6000
+        }
+      )
+      return <>{data}</>
+    }
+
+    function B() {
+      useEffect(() => {
+        mutate(
+          swrKey,
+          async () => {
+            return 'B'
+          },
+          true
+        )
+      }, [])
+      return null
+    }
+
+    function Page() {
+      const [isShowA, setIsShowA] = useState(true)
+
+      return (
+        <button
+          onClick={() => {
+            setIsShowA(!isShowA)
+          }}
+        >
+          click me {isShowA ? <A /> : <B />}
+        </button>
+      )
+    }
+
+    render(<Page />)
+
+    await act(() => sleep(20))
+    fireEvent.click(screen.getByText('click me A'))
+    await act(() => sleep(20))
+    fireEvent.click(screen.getByText('click me'))
+    await act(() => sleep(20))
+    screen.getByText('click me A')
+  })
+
+  it('should respect `shouldRevalidate` of `trigger` even though there is no mounted hook', async () => {
+    const swrKey =
+      'should respect `shouldRevalidate` of `trigger` even though there is no mounted hook'
+    let count = 0
+    function A() {
+      const { data } = useSWR(
+        swrKey,
+        async () => {
+          return ++count
+        },
+        {
+          dedupingInterval: 6000
+        }
+      )
+      return <>{data}</>
+    }
+
+    function B() {
+      useEffect(() => {
+        trigger(swrKey, true)
+      }, [])
+      return null
+    }
+
+    function Page() {
+      const [isShowA, setIsShowA] = useState(true)
+
+      return (
+        <button
+          onClick={() => {
+            setIsShowA(!isShowA)
+          }}
+        >
+          click me {isShowA ? <A /> : <B />}
+        </button>
+      )
+    }
+
+    render(<Page />)
+
+    await act(() => sleep(20))
+    fireEvent.click(screen.getByText('click me 1'))
+    await act(() => sleep(20))
+    fireEvent.click(screen.getByText('click me'))
+    await act(() => sleep(20))
+    screen.getByText('click me 2')
   })
 })
