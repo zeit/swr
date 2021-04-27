@@ -1,6 +1,6 @@
 # SWR Contribution Guidelines
 
-Thank you for reading this guide and we appreciate any contribution. 
+Thank you for reading this guide and we appreciate any contribution.
 
 ## Ask a Question
 
@@ -44,4 +44,4 @@ yarn dev:next
 
 ## Update Documentation
 
-To update the [SWR Documentation](https://swr.vercel.app), you can contribute to the [website repository](https://github.com/vercel/swr-site). 
+To update the [SWR Documentation](https://swr.vercel.app), you can contribute to the [website repository](https://github.com/vercel/swr-site).
