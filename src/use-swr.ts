@@ -34,7 +34,7 @@ const now = () => ++__timestamp
 const SWRGlobalState = new WeakMap<Cache, any>()
 const getGlobalState = (cache: Cache) => {
   if (!SWRGlobalState.has(cache)) {
-    SWRGlobalState.set(cache, [{}, {}, {}, {}, {}, {}, {}])
+    SWRGlobalState.set(cache, [{}, {}, {}, {}, {}, {}, {}, {}])
   }
   return SWRGlobalState.get(cache) as [
     Record<string, Revalidator[]>, // FOCUS_REVALIDATORS
@@ -43,7 +43,8 @@ const getGlobalState = (cache: Cache) => {
     Record<string, number>, // MUTATION_TS
     Record<string, number>, // MUTATION_END_TS
     Record<string, any>, // CONCURRENT_PROMISES
-    Record<string, number> // CONCURRENT_PROMISES_TS
+    Record<string, number>, // CONCURRENT_PROMISES_TS
+    Record<string, number> // RETRY_COUNTS
   ]
 }
 
@@ -226,7 +227,8 @@ export function useSWRHandler<Data = any, Error = any>(
     MUTATION_TS,
     MUTATION_END_TS,
     CONCURRENT_PROMISES,
-    CONCURRENT_PROMISES_TS
+    CONCURRENT_PROMISES_TS,
+    RETRY_COUNTS
   ] = getGlobalState(cache)
 
   // `key` is the identifier of the SWR `data` state.
@@ -366,7 +368,9 @@ export function useSWRHandler<Data = any, Error = any>(
           // only do this for the original request.
           safeCallback(() => configRef.current.onSuccess(newData, key, config))
         }
-
+        // CONCURRENT_PROMISES[key] should be resolved at this point so we can
+        // delete the key from RETRY_COUNTS
+        delete RETRY_COUNTS[key]
         // if there're other ongoing request(s), started after the current one,
         // we need to ignore the current one to avoid possible race conditions:
         //   req1------------------>res1        (current one)
@@ -461,12 +465,19 @@ export function useSWRHandler<Data = any, Error = any>(
         safeCallback(() => configRef.current.onError(err, key, config))
         if (config.shouldRetryOnError) {
           // when retrying, we always enable deduping
-          safeCallback(() =>
-            configRef.current.onErrorRetry(err, key, config, revalidate, {
-              retryCount: retryCount + 1,
-              dedupe: true
-            })
-          )
+
+          safeCallback(() => {
+            if (isUndefined(RETRY_COUNTS[key])) {
+              RETRY_COUNTS[key] = 0
+            }
+            if (RETRY_COUNTS[key] === retryCount) {
+              configRef.current.onErrorRetry(err, key, config, revalidate, {
+                retryCount: retryCount + 1,
+                dedupe: true
+              })
+              RETRY_COUNTS[key]++
+            }
+          })
         }
       }
 
