@@ -7,6 +7,7 @@
   "peerDependencies": {
     "swr": "*",
     "react": "*",
-    "dequal": "*"
+    "dequal": "*",
+    "tslib": "*"
   }
 }

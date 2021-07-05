@@ -97,6 +97,7 @@
     "react": "^16.11.0 || ^17.0.0"
   },
   "dependencies": {
-    "dequal": "2.0.2"
+    "dequal": "2.0.2",
+    "tslib": "2.3.0"
   }
 }

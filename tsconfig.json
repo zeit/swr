@@ -10,6 +10,7 @@
     "noImplicitReturns": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
+    "importHelpers": true,
     "outDir": "./dist",
     "types": ["node", "jest"],
     "rootDir": "src",

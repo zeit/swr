@@ -5,8 +5,9 @@
   "module": "./dist/index.esm.js",
   "types": "./dist/infinite",
   "peerDependencies": {
-    "swr": "*",
+    "dequal": "*",
     "react": "*",
-    "dequal": "*"
+    "swr": "*",
+    "tslib": "*"
   }
 }

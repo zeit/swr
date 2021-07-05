@@ -3,6 +3,7 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "..",
+    "importHelpers": true,
   },
   "include": [".", "../src"],
   "exclude": ["./dist"]
