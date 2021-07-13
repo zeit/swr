@@ -565,6 +565,61 @@ const { data, error } = useSWR('/api/user', fetcher, { dedupingInterval: 1000 })
 This will deduplicate requests at an interval of 1 second.
 <br/>
 
+## Testing
+
+Because SWR uses a global cache, you'll need to do some cleanup after each test to ensure that no state leaks across your tests.
+
+There are two steps to resetting the cache:
+
+1. Import `cache` from `swr` and call `cache.clear()` after each test.
+2. Set the [`dedupingInterval`](https://github.com/zeit/swr#options) config option to 0 when rendering your app, so SWR doesn't ignore requests from new test runs before the deduping interval has had a chance to pass. You can do this using the `SWRConfig` provider context directly in your tests.
+
+Your test setup will end up looking something like this. Assume we're testing our `<App />` component.
+
+```js
+import React from "react";
+import {
+  render,
+  waitForElementToBeRemoved
+} from "@testing-library/react";
+import AppComponent from "../App";
+import { cache, SWRConfig } from "swr";
+
+const App = () => (
+  <SWRConfig value={{ dedupingInterval: 0 }}>
+    <AppComponent />
+  </SWRConfig>
+);
+
+afterEach(() => {
+  cache.clear();
+});
+
+it("shows a message if there are no todos", async () => {
+  // mock the api
+  server.get('/api/todos', { todos: [] })
+  
+  const { getByTestId } = render(<App />);
+  await waitForElementToBeRemoved(() => getByTestId("loading"));
+  
+  expect(getByTestId("no-todos")).toBeInTheDocument();
+});
+
+it("shows existing todos", async () => {
+  // mock the api
+  server.get('/api/todos', { todos: [{ id: 1, text: "Buy groceries" }, { id: 2, text: "Do laundry" }] })
+  
+  const { getByTestId, getAllByTestId } = render(<App />);
+  await waitForElementToBeRemoved(() => getByTestId("loading"));
+  
+  expect(getAllByTestId("todo")).toHaveLength(2);
+});
+```
+
+Each of your tests should now start with a clean slate.
+
+See [PR #231](https://github.com/zeit/swr/pull/231) for more info on the cache API.
+
 ## Authors
 
 - Shu Ding ([@shuding_](https://twitter.com/shuding_)) – [Vercel](https://vercel.com)
