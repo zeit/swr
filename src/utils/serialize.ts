@@ -1,7 +1,7 @@
 import hash from './hash'
 import { Key } from '../types'
 
-export function serialize(key: Key): [string, any, string, string] {
+export function serialize(key: Key): [string, any[], string, string] {
   if (typeof key === 'function') {
     try {
       key = key()

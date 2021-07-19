@@ -1,4 +1,4 @@
-import useSWR, { Middleware, SWRHook } from 'swr'
+import useSWR, { Middleware } from 'swr'
 import { withMiddleware } from '../src/utils/with-middleware'
 
 export const immutable: Middleware = useSWRNext => (key, fetcher, config) => {
@@ -9,4 +9,4 @@ export const immutable: Middleware = useSWRNext => (key, fetcher, config) => {
   return useSWRNext(key, fetcher, config)
 }
 
-export default withMiddleware(useSWR as SWRHook, immutable)
+export default withMiddleware(useSWR, immutable)
