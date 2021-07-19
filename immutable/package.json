@@ -1,6 +1,6 @@
 {
   "name": "swr-immutable",
-  "version": "0.0.1",
+  "private": true,
   "main": "./dist/index.js",
   "module": "./dist/index.esm.js",
   "types": "./dist/immutable",

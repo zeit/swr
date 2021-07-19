@@ -1,9 +1,9 @@
 {
-  "name": "swr-infinite",
+  "name": "swr-subscribe",
   "private": true,
   "main": "./dist/index.js",
   "module": "./dist/index.esm.js",
-  "types": "./dist/infinite",
+  "types": "./dist/subscribe",
   "peerDependencies": {
     "swr": "*",
     "react": "*",

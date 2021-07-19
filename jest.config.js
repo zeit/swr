@@ -7,7 +7,8 @@ module.exports = {
   moduleNameMapper: {
     '^swr$': '<rootDir>/src',
     '^swr/infinite$': '<rootDir>/infinite/index.ts',
-    '^swr/immutable$': '<rootDir>/immutable/index.ts'
+    '^swr/immutable$': '<rootDir>/immutable/index.ts',
+    '^swr/subscribe$': '<rootDir>/subscribe/index.ts',
   },
   globals: {
     'ts-jest': {
